@@ -60,7 +60,6 @@ import java.io.File
 
 @Composable
 fun MainScreen() {
-    val context = LocalContext.current
 
     val musicDir = File(Environment.getExternalStorageDirectory(), "AppMusic")
     val musicFiles = remember {
@@ -81,7 +80,7 @@ fun MainScreen() {
     }
 
     var currentPosition by remember { mutableStateOf(0) }
-    var duration by remember { mutableStateOf(1) } // 1 чтобы не было деления на 0
+    var duration by remember { mutableStateOf(1) }
 
     // Загружаем и подготавливаем первый трек
     LaunchedEffect(musicFiles) {
@@ -94,9 +93,7 @@ fun MainScreen() {
             // метаданные
             val retriever = MediaMetadataRetriever()
             retriever.setDataSource(musicFiles[currentTrackIndex].absolutePath)
-            val artBytes = retriever.embeddedPicture
 
-            println("Has embedded picture: ${artBytes != null}, Size: ${artBytes?.size}")
             trackTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
             retriever.embeddedPicture?.let {
                 trackArtwork = BitmapFactory.decodeByteArray(it, 0, it.size)
@@ -177,7 +174,7 @@ fun MainScreen() {
                     bitmap = artwork.asImageBitmap(),
                     contentDescription = "Обложка",
                     modifier = imageModifier,
-                    contentScale = ContentScale.Fit // не обрезает
+                    contentScale = ContentScale.Fit
                 )
             } else {
                 Image(
@@ -189,8 +186,6 @@ fun MainScreen() {
             }
         }
 
-
-        // Всё остальное внизу
         Box(
             modifier = Modifier
                 .fillMaxSize()

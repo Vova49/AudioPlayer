@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🔒 Запрашиваем разрешения на чтение музыки
+        // Запрашиваем разрешения на чтение музыки
         requestAudioPermission()
 
         setContent {
