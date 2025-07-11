@@ -50,9 +50,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -172,14 +172,14 @@ fun MainScreen() {
             if (artwork != null) {
                 Image(
                     bitmap = artwork.asImageBitmap(),
-                    contentDescription = "Обложка",
+                    contentDescription = stringResource(R.string.cover),
                     modifier = imageModifier,
                     contentScale = ContentScale.Fit
                 )
             } else {
                 Image(
                     painter = defaultImage,
-                    contentDescription = "Дефолтная обложка",
+                    contentDescription = stringResource(R.string.default_cover),
                     modifier = imageModifier,
                     contentScale = ContentScale.Fit
                 )
@@ -204,7 +204,7 @@ fun MainScreen() {
                 Text(
                     text = trackTitle
                         ?: musicFiles.getOrNull(currentTrackIndex)?.nameWithoutExtension
-                        ?: "Без названия",
+                        ?: stringResource(R.string.untitled),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 8.dp),
                     maxLines = 1,
@@ -315,7 +315,7 @@ fun MainScreen() {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Filled.SkipPrevious,
-                                contentDescription = "Предыдущий трек",
+                                contentDescription = stringResource(R.string.previous_track),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.size(36.dp)
                             )
@@ -343,7 +343,9 @@ fun MainScreen() {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                contentDescription = if (isPlaying) "Пауза" else "Воспроизвести",
+                                contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(
+                                    R.string.play
+                                ),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(48.dp)
                             )
@@ -366,7 +368,7 @@ fun MainScreen() {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Filled.SkipNext,
-                                contentDescription = "Следующий трек",
+                                contentDescription = stringResource(R.string.next_track),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.size(36.dp)
                             )

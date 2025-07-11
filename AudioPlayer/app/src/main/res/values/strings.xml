@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">AudioPlayer</string>
+    <string name="cover">Обложка</string>
+    <string name="default_cover">Дефолтная обложка</string>
+    <string name="untitled">Без названия</string>
+    <string name="previous_track">Предыдущий трек</string>
+    <string name="pause">Пауза</string>
+    <string name="play">Воспроизвести</string>
+    <string name="next_track">Следующий трек</string>
 </resources>
