@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -60,11 +61,10 @@ import java.io.File
 
 @Composable
 fun MainScreen() {
-
     val musicDir = File(Environment.getExternalStorageDirectory(), "AppMusic")
     val musicFiles = remember {
         musicDir
-            ?.listFiles()
+            .listFiles()
             ?.filter { it.extension.lowercase() == "mp3" }
             ?.sortedBy { it.name }
             ?: emptyList()
@@ -154,36 +154,14 @@ fun MainScreen() {
             .fillMaxSize()
             .padding(bottom = 32.dp)
     ) {
-
+        // Обложка трека
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 54.dp),
             contentAlignment = Alignment.TopCenter
         ) {
-            val defaultImage = painterResource(id = R.drawable.default_cover)
-            val artwork = trackArtwork
-
-            val imageModifier = Modifier
-                .fillMaxWidth(0.8f)
-                .aspectRatio(1f, matchHeightConstraintsFirst = false)
-                .clip(RoundedCornerShape(14.dp))
-
-            if (artwork != null) {
-                Image(
-                    bitmap = artwork.asImageBitmap(),
-                    contentDescription = stringResource(R.string.cover),
-                    modifier = imageModifier,
-                    contentScale = ContentScale.Fit
-                )
-            } else {
-                Image(
-                    painter = defaultImage,
-                    contentDescription = stringResource(R.string.default_cover),
-                    modifier = imageModifier,
-                    contentScale = ContentScale.Fit
-                )
-            }
+            TrackCover(artwork = trackArtwork)
         }
 
         Box(
@@ -198,184 +176,251 @@ fun MainScreen() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 240.dp)
-
             ) {
-                // Название
-                Text(
-                    text = trackTitle
+                // Название трека
+                TrackTitle(
+                    title = trackTitle
                         ?: musicFiles.getOrNull(currentTrackIndex)?.nameWithoutExtension
-                        ?: stringResource(R.string.untitled),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
                 )
 
-                val barWidthPx =
-                    with(LocalDensity.current) { (0.6f * LocalConfiguration.current.screenWidthDp).dp.toPx() }
-
-                var isDragging by remember { mutableStateOf(false) }
-                var dragOffsetX by remember { mutableStateOf(0f) }
-
-                val actualProgress = if (!isDragging) {
-                    if (duration > 0) currentPosition.toFloat() / duration else 0f
-                } else {
-                    (dragOffsetX / barWidthPx).coerceIn(0f, 1f)
-                }
-
-                val offsetDp = with(LocalDensity.current) { (actualProgress * barWidthPx).toDp() }
-
-                fun formatTime(ms: Int): String {
-                    val totalSeconds = ms / 1000
-                    val minutes = totalSeconds / 60
-                    val seconds = totalSeconds % 60
-                    return "%02d:%02d".format(minutes, seconds)
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = formatTime(currentPosition),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(end = 15.dp)
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .width((0.6f * LocalConfiguration.current.screenWidthDp).dp)
-                            .height(24.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .background(
-                                    Color.Gray.copy(alpha = 0.4f),
-                                    shape = RoundedCornerShape(2.dp)
-                                )
-                                .align(Alignment.Center)
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .offset(x = offsetDp - 6.dp)
-                                .size(12.dp)
-                                .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
-                                .border(1.dp, Color.White, CircleShape)
-                                .draggable(
-                                    orientation = Orientation.Horizontal,
-                                    state = rememberDraggableState { delta ->
-                                        dragOffsetX = (dragOffsetX + delta).coerceIn(0f, barWidthPx)
-                                    },
-                                    onDragStarted = {
-                                        isDragging = true
-                                        dragOffsetX = actualProgress * barWidthPx
-                                    },
-                                    onDragStopped = {
-                                        val newPosition = ((dragOffsetX / barWidthPx).coerceIn(
-                                            0f, 1f
-                                        ) * duration).toInt()
-                                        mediaPlayer.seekTo(newPosition)
-                                        currentPosition = newPosition
-                                        isDragging = false
-                                    }
-                                )
-                        )
+                // Прогрессбар и таймер
+                TrackProgressBar(
+                    currentPosition = currentPosition,
+                    duration = duration,
+                    onSeekTo = { newPosition ->
+                        mediaPlayer.seekTo(newPosition)
+                        currentPosition = newPosition
                     }
+                )
 
-                    Text(
-                        text = formatTime(duration),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 15.dp)
-                    )
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shadowElevation = 8.dp,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clickable {
-                                currentTrackIndex =
-                                    if (currentTrackIndex - 1 < 0) musicFiles.lastIndex else currentTrackIndex - 1
-                                playTrack(currentTrackIndex)
-                            }
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Filled.SkipPrevious,
-                                contentDescription = stringResource(R.string.previous_track),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(36.dp)
-                            )
+                // Кнопки управления
+                PlayerControls(
+                    isPlaying = isPlaying,
+                    onPlayPauseClick = {
+                        if (isPlaying) {
+                            mediaPlayer.pause()
+                            isPlaying = false
+                        } else {
+                            mediaPlayer.start()
+                            isPlaying = true
                         }
+                    },
+                    onPreviousClick = {
+                        currentTrackIndex =
+                            if (currentTrackIndex - 1 < 0) musicFiles.lastIndex else currentTrackIndex - 1
+                        playTrack(currentTrackIndex)
+                    },
+                    onNextClick = {
+                        currentTrackIndex = (currentTrackIndex + 1) % musicFiles.size
+                        playTrack(currentTrackIndex)
                     }
-
-                    Spacer(modifier = Modifier.width(20.dp))
-
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shadowElevation = 8.dp,
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clickable {
-                                if (isPlaying) {
-                                    mediaPlayer.pause()
-                                    isPlaying = false
-                                } else {
-                                    mediaPlayer.start()
-                                    isPlaying = true
-                                }
-                            }
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(
-                                    R.string.play
-                                ),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(20.dp))
-
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shadowElevation = 8.dp,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clickable {
-                                currentTrackIndex = (currentTrackIndex + 1) % musicFiles.size
-                                playTrack(currentTrackIndex)
-                            }
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Filled.SkipNext,
-                                contentDescription = stringResource(R.string.next_track),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                    }
-                }
+                )
             }
         }
     }
+}
+
+// Отображает обложку трека
+@Composable
+fun TrackCover(artwork: Bitmap?) {
+    val defaultImage = painterResource(id = R.drawable.default_cover)
+    val imageModifier = Modifier
+        .fillMaxWidth(0.8f)
+        .aspectRatio(1f, matchHeightConstraintsFirst = false)
+        .clip(RoundedCornerShape(14.dp))
+
+    if (artwork != null) {
+        Image(
+            bitmap = artwork.asImageBitmap(),
+            contentDescription = stringResource(R.string.cover),
+            modifier = imageModifier,
+            contentScale = ContentScale.Fit
+        )
+    } else {
+        Image(
+            painter = defaultImage,
+            contentDescription = stringResource(R.string.default_cover),
+            modifier = imageModifier,
+            contentScale = ContentScale.Fit
+        )
+    }
+}
+
+// Отображает название трека или "Без названия", если заголовок отсутствует
+@Composable
+fun TrackTitle(title: String?) {
+    Text(
+        text = title ?: stringResource(R.string.untitled),
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(bottom = 8.dp),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+// Отображает прогресс-бар с поддержкой перетаскивания и текущим временем
+@Composable
+fun TrackProgressBar(
+    currentPosition: Int,
+    duration: Int,
+    onSeekTo: (Int) -> Unit
+) {
+    val barWidthPx =
+        with(LocalDensity.current) { (0.6f * LocalConfiguration.current.screenWidthDp).dp.toPx() }
+
+    var isDragging by remember { mutableStateOf(false) }
+    var dragOffsetX by remember { mutableStateOf(0f) }
+
+    val actualProgress = if (!isDragging) {
+        if (duration > 0) currentPosition.toFloat() / duration else 0f
+    } else {
+        (dragOffsetX / barWidthPx).coerceIn(0f, 1f)
+    }
+
+    val offsetDp = with(LocalDensity.current) { (actualProgress * barWidthPx).toDp() }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = formatTime(currentPosition),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(end = 15.dp)
+        )
+
+        Box(
+            modifier = Modifier
+                .width((0.6f * LocalConfiguration.current.screenWidthDp).dp)
+                .height(24.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .background(
+                        Color.Gray.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(2.dp)
+                    )
+                    .align(Alignment.Center)
+            )
+
+            Box(
+                modifier = Modifier
+                    .offset(x = offsetDp - 6.dp)
+                    .size(12.dp)
+                    .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
+                    .border(1.dp, Color.White, CircleShape)
+                    .draggable(
+                        orientation = Orientation.Horizontal,
+                        state = rememberDraggableState { delta ->
+                            dragOffsetX = (dragOffsetX + delta).coerceIn(0f, barWidthPx)
+                        },
+                        onDragStarted = {
+                            isDragging = true
+                            dragOffsetX = actualProgress * barWidthPx
+                        },
+                        onDragStopped = {
+                            val newPosition = ((dragOffsetX / barWidthPx).coerceIn(
+                                0f, 1f
+                            ) * duration).toInt()
+                            onSeekTo(newPosition)
+                            isDragging = false
+                        }
+                    )
+            )
+        }
+
+        Text(
+            text = formatTime(duration),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(start = 15.dp)
+        )
+    }
+}
+
+// Кнопка с иконкой в круглой форме
+@Composable
+fun PlayerButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    size: Int,
+    iconSize: Int,
+    isPrimary: Boolean = false
+) {
+    Surface(
+        shape = CircleShape,
+        color = if (isPrimary) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+        shadowElevation = 8.dp,
+        modifier = Modifier
+            .size(size.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = if (isPrimary) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(iconSize.dp)
+            )
+        }
+    }
+}
+
+// Набор управляющих кнопок плеера для воспроизведения, паузы и переключения треков
+
+@Composable
+fun PlayerControls(
+    isPlaying: Boolean,
+    onPlayPauseClick: () -> Unit,
+    onPreviousClick: () -> Unit,
+    onNextClick: () -> Unit
+) {
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PlayerButton(
+            icon = Icons.Filled.SkipPrevious,
+            contentDescription = stringResource(R.string.previous_track),
+            onClick = onPreviousClick,
+            size = 80,
+            iconSize = 36
+        )
+
+        Spacer(modifier = Modifier.width(20.dp))
+
+        PlayerButton(
+            icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+            contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
+            onClick = onPlayPauseClick,
+            size = 100,
+            iconSize = 48,
+            isPrimary = true
+        )
+
+        Spacer(modifier = Modifier.width(20.dp))
+
+        PlayerButton(
+            icon = Icons.Filled.SkipNext,
+            contentDescription = stringResource(R.string.next_track),
+            onClick = onNextClick,
+            size = 80,
+            iconSize = 36
+        )
+    }
+}
+
+// Форматирует время в миллисекундах в строку вида "мм:сс"
+
+fun formatTime(ms: Int): String {
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%02d:%02d".format(minutes, seconds)
 }
