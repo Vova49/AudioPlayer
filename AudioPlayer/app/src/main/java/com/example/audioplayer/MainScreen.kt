@@ -85,54 +85,34 @@ fun MainScreen() {
     // Загружаем и подготавливаем первый трек
     LaunchedEffect(musicFiles) {
         if (musicFiles.isNotEmpty()) {
-            mediaPlayer.reset()
-            mediaPlayer.setDataSource(musicFiles[currentTrackIndex].absolutePath)
-            mediaPlayer.prepare()
-            duration = mediaPlayer.duration
-
-            // метаданные
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(musicFiles[currentTrackIndex].absolutePath)
-
-            trackTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-            retriever.embeddedPicture?.let {
-                trackArtwork = BitmapFactory.decodeByteArray(it, 0, it.size)
-            } ?: run {
-                trackArtwork = null
-            }
-            retriever.release()
-
-            mediaPlayer.setOnCompletionListener {
+            mediaPlayer.release()
+            val (player, title, artwork) = prepareTrack(musicFiles[currentTrackIndex]) {
                 isPlaying = false
             }
+
+            mediaPlayer = player
+            duration = player.duration
+            trackTitle = title
+            trackArtwork = artwork
         }
     }
 
     fun playTrack(index: Int) {
         if (index in musicFiles.indices) {
             mediaPlayer.release()
-            mediaPlayer = MediaPlayer().apply {
-                setDataSource(musicFiles[index].absolutePath)
-                prepare()
-                start()
-                setOnCompletionListener {
-                    isPlaying = false
-                }
+            val (player, title, artwork) = prepareTrack(musicFiles[index]) {
+                isPlaying = false
             }
-            duration = mediaPlayer.duration
-            isPlaying = true
 
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(musicFiles[index].absolutePath)
-            trackTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-            retriever.embeddedPicture?.let {
-                trackArtwork = BitmapFactory.decodeByteArray(it, 0, it.size)
-            } ?: run {
-                trackArtwork = null
-            }
-            retriever.release()
+            mediaPlayer = player
+            player.start()
+            duration = player.duration
+            isPlaying = true
+            trackTitle = title
+            trackArtwork = artwork
         }
     }
+
 
     DisposableEffect(Unit) {
         onDispose {
@@ -423,4 +403,27 @@ fun formatTime(ms: Int): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%02d:%02d".format(minutes, seconds)
+}
+
+// Загружает трек в плеер и получает информацию о нём
+fun prepareTrack(
+    file: File,
+    onCompletion: () -> Unit
+): Triple<MediaPlayer, String?, Bitmap?> {
+    val mediaPlayer = MediaPlayer().apply {
+        setDataSource(file.absolutePath)
+        prepare()
+        setOnCompletionListener { onCompletion() }
+    }
+
+    val retriever = MediaMetadataRetriever().apply {
+        setDataSource(file.absolutePath)
+    }
+    val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+    val artwork = retriever.embeddedPicture?.let {
+        BitmapFactory.decodeByteArray(it, 0, it.size)
+    }
+    retriever.release()
+
+    return Triple(mediaPlayer, title, artwork)
 }
