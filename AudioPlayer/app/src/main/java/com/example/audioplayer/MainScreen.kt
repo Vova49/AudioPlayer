@@ -82,7 +82,7 @@ fun MainScreen() {
     var currentPosition by remember { mutableStateOf(0) }
     var duration by remember { mutableStateOf(1) }
 
-    // Загружаем и подготавливаем первый трек
+    // Load and prepare the first track
     LaunchedEffect(musicFiles) {
         if (musicFiles.isNotEmpty()) {
             mediaPlayer.release()
@@ -134,7 +134,7 @@ fun MainScreen() {
             .fillMaxSize()
             .padding(bottom = 32.dp)
     ) {
-        // Обложка трека
+        // Track cover
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -157,13 +157,13 @@ fun MainScreen() {
                     .fillMaxWidth()
                     .padding(top = 240.dp)
             ) {
-                // Название трека
+                // Track title
                 TrackTitle(
                     title = trackTitle
                         ?: musicFiles.getOrNull(currentTrackIndex)?.nameWithoutExtension
                 )
 
-                // Прогрессбар и таймер
+                // Progress bar and timer
                 TrackProgressBar(
                     currentPosition = currentPosition,
                     duration = duration,
@@ -173,7 +173,7 @@ fun MainScreen() {
                     }
                 )
 
-                // Кнопки управления
+                // Control buttons
                 PlayerControls(
                     isPlaying = isPlaying,
                     onPlayPauseClick = {
@@ -200,7 +200,7 @@ fun MainScreen() {
     }
 }
 
-// Отображает обложку трека
+// Displays the track cover
 @Composable
 fun TrackCover(artwork: Bitmap?) {
     val defaultImage = painterResource(id = R.drawable.default_cover)
@@ -226,7 +226,7 @@ fun TrackCover(artwork: Bitmap?) {
     }
 }
 
-// Отображает название трека или "Без названия", если заголовок отсутствует
+// Displays the track name or “Untitled” if no title is available.
 @Composable
 fun TrackTitle(title: String?) {
     Text(
@@ -238,7 +238,7 @@ fun TrackTitle(title: String?) {
     )
 }
 
-// Отображает прогресс-бар с поддержкой перетаскивания и текущим временем
+// Displays a progress bar with drag-and-drop support and current time
 @Composable
 fun TrackProgressBar(
     currentPosition: Int,
@@ -323,7 +323,7 @@ fun TrackProgressBar(
     }
 }
 
-// Кнопка с иконкой в круглой форме
+// Button with a round icon
 @Composable
 fun PlayerButton(
     icon: ImageVector,
@@ -352,7 +352,7 @@ fun PlayerButton(
     }
 }
 
-// Набор управляющих кнопок плеера для воспроизведения, паузы и переключения треков
+// Set of player control buttons for playback, pause, and track switching
 
 @Composable
 fun PlayerControls(
@@ -396,7 +396,7 @@ fun PlayerControls(
     }
 }
 
-// Форматирует время в миллисекундах в строку вида "мм:сс"
+// Formats time in milliseconds into a string of the form “mm:ss”
 
 fun formatTime(ms: Int): String {
     val totalSeconds = ms / 1000
@@ -405,7 +405,7 @@ fun formatTime(ms: Int): String {
     return "%02d:%02d".format(minutes, seconds)
 }
 
-// Загружает трек в плеер и получает информацию о нём
+// Loads the track into the player and obtains information about it
 fun prepareTrack(
     file: File,
     onCompletion: () -> Unit
