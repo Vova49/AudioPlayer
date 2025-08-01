@@ -1,10 +1,11 @@
 package com.example.audioplayer
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
-import android.os.Environment
+import android.provider.MediaStore
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -51,6 +52,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -61,13 +63,12 @@ import java.io.File
 
 @Composable
 fun MainScreen() {
-    val musicDir = File(Environment.getExternalStorageDirectory(), "AppMusic")
+    val context = LocalContext.current
+
+    val supportedExtensions = listOf("mp3", "wav", "m4a", "flac", "ogg", "aac")
+
     val musicFiles = remember {
-        musicDir
-            .listFiles()
-            ?.filter { it.extension.lowercase() == "mp3" }
-            ?.sortedBy { it.name }
-            ?: emptyList()
+        getAllAudioFiles(context, supportedExtensions)
     }
 
     var currentTrackIndex by remember { mutableStateOf(0) }
@@ -426,4 +427,35 @@ fun prepareTrack(
     retriever.release()
 
     return Triple(mediaPlayer, title, artwork)
+}
+
+fun getAllAudioFiles(context: Context, supportedExtensions: List<String>): List<File> {
+    val audioFiles = mutableListOf<File>()
+    val projection = arrayOf(
+        MediaStore.Audio.Media.DATA
+    )
+
+    val selection = null
+    val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+
+    val cursor = context.contentResolver.query(
+        uri,
+        projection,
+        selection,
+        null,
+        null
+    )
+
+    cursor?.use {
+        val dataIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+        while (cursor.moveToNext()) {
+            val filePath = cursor.getString(dataIndex)
+            val file = File(filePath)
+            if (file.exists() && supportedExtensions.contains(file.extension.lowercase())) {
+                audioFiles.add(file)
+            }
+        }
+    }
+
+    return audioFiles.sortedBy { it.name }
 }
