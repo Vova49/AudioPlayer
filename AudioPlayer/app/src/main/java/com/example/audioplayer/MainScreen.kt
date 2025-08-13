@@ -31,6 +31,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
@@ -61,6 +63,12 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import java.io.File
 
+// Enumeration for playback modes
+enum class PlaybackMode {
+    PLAY_ALL,    // Play all tracks sequentially
+    REPEAT_ONE   // Repeat the current track
+}
+
 @Composable
 fun MainScreen() {
     val context = LocalContext.current
@@ -75,6 +83,7 @@ fun MainScreen() {
     var isPlaying by remember { mutableStateOf(false) }
     var trackTitle by remember { mutableStateOf<String?>(null) }
     var trackArtwork by remember { mutableStateOf<Bitmap?>(null) }
+    var playbackMode by remember { mutableStateOf(PlaybackMode.PLAY_ALL) }
 
     var mediaPlayer by remember {
         mutableStateOf(MediaPlayer())
@@ -83,27 +92,27 @@ fun MainScreen() {
     var currentPosition by remember { mutableStateOf(0) }
     var duration by remember { mutableStateOf(1) }
 
-    // Load and prepare the first track
-    LaunchedEffect(musicFiles) {
-        if (musicFiles.isNotEmpty()) {
-            mediaPlayer.release()
-            val (player, title, artwork) = prepareTrack(musicFiles[currentTrackIndex]) {
-                isPlaying = false
-            }
-
-            mediaPlayer = player
-            duration = player.duration
-            trackTitle = title
-            trackArtwork = artwork
-        }
-    }
 
     fun playTrack(index: Int) {
         if (index in musicFiles.indices) {
             mediaPlayer.release()
-            val (player, title, artwork) = prepareTrack(musicFiles[index]) {
-                isPlaying = false
-            }
+            val (player, title, artwork) = prepareTrack(
+                file = musicFiles[index],
+                onCompletion = {
+                    // When a track finishes in PLAY_ALL mode, stop playback
+                    isPlaying = false
+                },
+                playbackMode = playbackMode,
+                onPlaybackModeAction = {
+                    // When repeating a track in REPEAT_ONE mode, continue playback
+                    isPlaying = true
+                },
+                onNextTrack = {
+                    // Move to the next track
+                    currentTrackIndex = (currentTrackIndex + 1) % musicFiles.size
+                    playTrack(currentTrackIndex)
+                }
+            )
 
             mediaPlayer = player
             player.start()
@@ -114,6 +123,34 @@ fun MainScreen() {
         }
     }
 
+    // Load and prepare the first track
+    LaunchedEffect(musicFiles) {
+        if (musicFiles.isNotEmpty()) {
+            mediaPlayer.release()
+            val (player, title, artwork) = prepareTrack(
+                file = musicFiles[currentTrackIndex],
+                onCompletion = {
+                    // When a track finishes in PLAY_ALL mode, stop playback
+                    isPlaying = false
+                },
+                playbackMode = playbackMode,
+                onPlaybackModeAction = {
+                    // When repeating a track in REPEAT_ONE mode, continue playback
+                    isPlaying = true
+                },
+                onNextTrack = {
+                    // Move to the next track
+                    currentTrackIndex = (currentTrackIndex + 1) % musicFiles.size
+                    playTrack(currentTrackIndex)
+                }
+            )
+
+            mediaPlayer = player
+            duration = player.duration
+            trackTitle = title
+            trackArtwork = artwork
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -177,6 +214,7 @@ fun MainScreen() {
                 // Control buttons
                 PlayerControls(
                     isPlaying = isPlaying,
+                    playbackMode = playbackMode,
                     onPlayPauseClick = {
                         if (isPlaying) {
                             mediaPlayer.pause()
@@ -194,6 +232,13 @@ fun MainScreen() {
                     onNextClick = {
                         currentTrackIndex = (currentTrackIndex + 1) % musicFiles.size
                         playTrack(currentTrackIndex)
+                    },
+                    onPlaybackModeChange = { newMode ->
+                        playbackMode = newMode
+                        // Reload the current track with the new playback mode
+                        if (musicFiles.isNotEmpty()) {
+                            playTrack(currentTrackIndex)
+                        }
                     }
                 )
             }
@@ -353,47 +398,94 @@ fun PlayerButton(
     }
 }
 
+// Playback mode switch button
+@Composable
+fun PlaybackModeButton(
+    playbackMode: PlaybackMode,
+    onModeChange: (PlaybackMode) -> Unit
+) {
+    val icon = when (playbackMode) {
+        PlaybackMode.PLAY_ALL -> Icons.Filled.Repeat
+        PlaybackMode.REPEAT_ONE -> Icons.Filled.RepeatOne
+    }
+
+    val description = when (playbackMode) {
+        PlaybackMode.PLAY_ALL -> stringResource(R.string.play_all)
+        PlaybackMode.REPEAT_ONE -> stringResource(R.string.repeat_one)
+    }
+
+    PlayerButton(
+        icon = icon,
+        contentDescription = description,
+        onClick = {
+            val newMode = when (playbackMode) {
+                PlaybackMode.PLAY_ALL -> PlaybackMode.REPEAT_ONE
+                PlaybackMode.REPEAT_ONE -> PlaybackMode.PLAY_ALL
+            }
+            onModeChange(newMode)
+        },
+        size = 60,
+        iconSize = 24
+    )
+}
+
 // Set of player control buttons for playback, pause, and track switching
 
 @Composable
 fun PlayerControls(
     isPlaying: Boolean,
+    playbackMode: PlaybackMode,
     onPlayPauseClick: () -> Unit,
     onPreviousClick: () -> Unit,
-    onNextClick: () -> Unit
+    onNextClick: () -> Unit,
+    onPlaybackModeChange: (PlaybackMode) -> Unit
 ) {
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        PlayerButton(
-            icon = Icons.Filled.SkipPrevious,
-            contentDescription = stringResource(R.string.previous_track),
-            onClick = onPreviousClick,
-            size = 80,
-            iconSize = 36
+        // Playback mode button
+        PlaybackModeButton(
+            playbackMode = playbackMode,
+            onModeChange = onPlaybackModeChange
         )
 
-        Spacer(modifier = Modifier.width(20.dp))
+        // Main control buttons
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PlayerButton(
+                icon = Icons.Filled.SkipPrevious,
+                contentDescription = stringResource(R.string.previous_track),
+                onClick = onPreviousClick,
+                size = 80,
+                iconSize = 36
+            )
 
-        PlayerButton(
-            icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-            contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
-            onClick = onPlayPauseClick,
-            size = 100,
-            iconSize = 48,
-            isPrimary = true
-        )
+            Spacer(modifier = Modifier.width(20.dp))
 
-        Spacer(modifier = Modifier.width(20.dp))
+            PlayerButton(
+                icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(
+                    R.string.play
+                ),
+                onClick = onPlayPauseClick,
+                size = 100,
+                iconSize = 48,
+                isPrimary = true
+            )
 
-        PlayerButton(
-            icon = Icons.Filled.SkipNext,
-            contentDescription = stringResource(R.string.next_track),
-            onClick = onNextClick,
-            size = 80,
-            iconSize = 36
-        )
+            Spacer(modifier = Modifier.width(20.dp))
+
+            PlayerButton(
+                icon = Icons.Filled.SkipNext,
+                contentDescription = stringResource(R.string.next_track),
+                onClick = onNextClick,
+                size = 80,
+                iconSize = 36
+            )
+        }
     }
 }
 
@@ -409,12 +501,28 @@ fun formatTime(ms: Int): String {
 // Loads the track into the player and obtains information about it
 fun prepareTrack(
     file: File,
-    onCompletion: () -> Unit
+    onCompletion: () -> Unit,
+    playbackMode: PlaybackMode = PlaybackMode.PLAY_ALL,
+    onPlaybackModeAction: () -> Unit = {},
+    onNextTrack: () -> Unit = {}
 ): Triple<MediaPlayer, String?, Bitmap?> {
     val mediaPlayer = MediaPlayer().apply {
         setDataSource(file.absolutePath)
         prepare()
-        setOnCompletionListener { onCompletion() }
+        setOnCompletionListener {
+            when (playbackMode) {
+                PlaybackMode.PLAY_ALL -> {
+                    // Instead of stopping, move to the next track
+                    onNextTrack()
+                }
+
+                PlaybackMode.REPEAT_ONE -> {
+                    seekTo(0)
+                    start()
+                    onPlaybackModeAction()
+                }
+            }
+        }
     }
 
     val retriever = MediaMetadataRetriever().apply {
