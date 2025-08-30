@@ -60,6 +60,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.audioplayer.utils.Constants.ONE
+import com.example.audioplayer.utils.Constants.ZERO
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -79,7 +81,7 @@ fun MainScreen() {
         getAllAudioFiles(context, supportedExtensions)
     }
 
-    var currentTrackIndex by remember { mutableStateOf(0) }
+    var currentTrackIndex by remember { mutableStateOf(ZERO) }
     var isPlaying by remember { mutableStateOf(false) }
     var trackTitle by remember { mutableStateOf<String?>(null) }
     var trackArtwork by remember { mutableStateOf<Bitmap?>(null) }
@@ -89,8 +91,8 @@ fun MainScreen() {
         mutableStateOf(MediaPlayer())
     }
 
-    var currentPosition by remember { mutableStateOf(0) }
-    var duration by remember { mutableStateOf(1) }
+    var currentPosition by remember { mutableStateOf(ZERO) }
+    var duration by remember { mutableStateOf(ONE) }
 
 
     fun playTrack(index: Int) {
@@ -405,7 +407,7 @@ fun PlaybackModeButton(
     onModeChange: (PlaybackMode) -> Unit
 ) {
     val icon = when (playbackMode) {
-        PlaybackMode.PLAY_ALL -> Icons.Filled.Repeat
+        PlaybackMode.PLAY_ALL -> Icons.Filled.SkipNext
         PlaybackMode.REPEAT_ONE -> Icons.Filled.RepeatOne
     }
 
